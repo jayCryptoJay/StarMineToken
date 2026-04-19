@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StarMine Live Preview</title>
+  <style>
+    body{margin:0;font-family:Inter,system-ui;background:linear-gradient(#0f172a,#020617);color:#e2e8f0}
+    .wrap{max-width:760px;margin:0 auto;padding:16px}
+    .card{background:rgba(15,23,42,.65);border:1px solid rgba(34,211,238,.25);border-radius:12px;padding:14px;margin-bottom:12px}
+    .row{display:flex;justify-content:space-between;gap:8px;align-items:center}
+    button{background:#0891b2;color:white;border:none;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer}
+    button.alt{background:#334155}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .pill{background:#0b1220;border:1px solid #1e293b;border-radius:8px;padding:8px;text-align:center}
+    .bar{height:8px;background:#111827;border-radius:999px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#22d3ee,#2563eb);width:0%}
+    .tap{width:100%;font-size:20px;padding:16px;box-shadow:0 0 20px rgba(34,211,238,.35)}
+    ul{margin:8px 0 0 0;padding-left:18px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🚀 StarMine Command Deck (Preview)</h1>
+  <div class="card grid">
+    <div class="pill"><small>Stardust</small><div id="dust">250.0</div></div>
+    <div class="pill"><small>Status</small><div id="status">idle</div></div>
+    <div class="pill"><small>Rate/hr</small><div id="rate">20.00</div></div>
+  </div>
+
+  <div class="card">
+    <div class="row"><strong>Mining Core</strong><span id="time">00:00:00</span></div>
+    <p id="yield">Session Yield: 0.00</p>
+    <div class="bar"><div class="fill" id="progress"></div></div>
+    <div class="row" style="margin-top:10px">
+      <button id="startMining">Start Mining</button>
+      <button id="collectEarly" class="alt">Collect Early</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><strong>Stellar Tap (20s)</strong><span>Best: <span id="best">0</span></span></div>
+    <div class="grid">
+      <div class="pill">Time: <span id="gtime">20</span></div>
+      <div class="pill">Score: <span id="score">0</span></div>
+      <div class="pill">Combo: <span id="combo">0</span></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="startGame">Start Round</button>
+      <button id="tap" class="tap">✨ TAP STAR ✨</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>Activity Feed</strong>
+    <ul id="feed"></ul>
+  </div>
+</div>
+
+<script>
+  const state = {dust:250,status:'idle',rate:20,time:0,yield:0,duration:180,game:false,gtime:20,score:0,combo:0,best:0};
+  const feed=[];
+  const el=id=>document.getElementById(id);
+  const push=m=>{feed.unshift(m);el('feed').innerHTML=feed.slice(0,6).map(x=>`<li>${x}</li>`).join('');};
+  const fmt=s=>`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+  function render(){
+    el('dust').textContent=state.dust.toFixed(1);el('status').textContent=state.status;el('rate').textContent=state.rate.toFixed(2);
+    el('time').textContent=fmt(state.time);el('yield').textContent=`Session Yield: ${state.yield.toFixed(2)}`;
+    el('progress').style.width=(state.status==='active'?((state.duration-state.time)/state.duration*100):0)+'%';
+    el('gtime').textContent=state.gtime;el('score').textContent=state.score;el('combo').textContent=state.combo;el('best').textContent=state.best;
+  }
+  function complete(early=false){const reward=state.yield*(early?0.75:1);state.dust+=reward;state.status='cooldown';state.time=30;state.yield=0;push(`Collected ${reward.toFixed(2)} Stardust${early?' (penalty)':''}.`);render();}
+  el('startMining').onclick=()=>{if(state.status!=='idle')return;state.status='active';state.time=state.duration;state.yield=0;push('Mining session launched.');render();};
+  el('collectEarly').onclick=()=>{if(state.status==='active')complete(true)};
+  el('startGame').onclick=()=>{state.game=true;state.gtime=20;state.score=0;state.combo=0;push('Stellar Tap started!');render();};
+  el('tap').onclick=()=>{if(!state.game)return;const gain=state.combo>=10?3:state.combo>=5?2:1;state.score+=gain;state.combo+=1;render();};
+  setInterval(()=>{
+    if(state.status==='active'){state.time=Math.max(0,state.time-1);state.yield+=state.rate/3600;if(state.time===0)complete(false)}
+    else if(state.status==='cooldown'){state.time=Math.max(0,state.time-1);if(state.time===0){state.status='idle';push('Cooldown done.')}}
+    if(state.game){state.gtime=Math.max(0,state.gtime-1);if(state.gtime===0){state.game=false;const r=Math.round(state.score*2.5);state.dust+=r;state.best=Math.max(state.best,state.score);push(`Mini-game ended. +${r} Stardust.`)}}
+    render();
+  },1000);
+  setInterval(()=>{const events=[[1.15,'Meteor shower +15%'],[0.9,'Nebula fog -10%'],[1.25,'Star alignment +25%']];const p=events[Math.floor(Math.random()*events.length)];state.rate=Number((state.rate*p[0]).toFixed(2));push('Cosmic event: '+p[1]);render();},45000);
+  push('Preview ready. Start mining or play Stellar Tap.');render();
+</script>
+</body>
+</html>
